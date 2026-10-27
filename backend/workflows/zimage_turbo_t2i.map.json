@@ -1,0 +1,14 @@
+{
+  "kind": "image",
+  "label": "Z-Image Turbo 文生图 (8 步)",
+  "models": ["diffusion_models/z_image_turbo_bf16.safetensors", "text_encoders/qwen_3_4b.safetensors", "vae/ae.safetensors"],
+  "fields": {
+    "prompt": [["27", "text"]],
+    "seed": [["3", "seed"]],
+    "steps": [["3", "steps"]],
+    "width": [["13", "width"]],
+    "height": [["13", "height"]],
+    "batch": [["13", "batch_size"]]
+  },
+  "output": ["9"]
+}

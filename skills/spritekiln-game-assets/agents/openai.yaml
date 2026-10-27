@@ -1,0 +1,4 @@
+﻿interface:
+  display_name: "SpriteKiln Game Assets"
+  short_description: "Local AI game-asset studio: pixel/HD sprites, animation, tiles, UI, 3D, Godot export"
+  default_prompt: "Use the SpriteKiln skill to create the game assets I describe and export them to my Godot project."

@@ -1,0 +1,121 @@
+@import "@fontsource/pixelify-sans/500.css";
+@import "@fontsource/pixelify-sans/700.css";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "tailwindcss";
+
+/* SpriteKiln tokens — a cutting-mat workbench with an ember kiln */
+@theme {
+  --color-mat: #e4ebe5;
+  --color-mat-line: #cbd6cd;
+  --color-paper: #f7f9f6;
+  --color-ink: #1c2333;
+  --color-ink-soft: #586273;
+  --color-ash: #9aa4af;
+  --color-ember: #ff5a1f;
+  --color-ember-deep: #d9430f;
+  --color-amber: #f2b134;
+  --color-glaze: #157f7a;
+  --color-glaze-soft: #d6ebe8;
+  --color-danger: #c2362b;
+  --font-display: "Pixelify Sans", "IBM Plex Sans", system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--color-mat);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* the cutting mat: 8px minor + 64px major grid */
+.mat {
+  background-color: var(--color-mat);
+  background-image:
+    linear-gradient(var(--color-mat-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-mat-line) 1px, transparent 1px),
+    linear-gradient(rgba(203, 214, 205, .45) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(203, 214, 205, .45) 1px, transparent 1px);
+  background-size: 64px 64px, 64px 64px, 8px 8px, 8px 8px;
+}
+
+/* transparency checkerboard for sprite previews */
+.checker {
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #e9edf0 25%, transparent 25%), linear-gradient(-45deg, #e9edf0 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e9edf0 75%), linear-gradient(-45deg, transparent 75%, #e9edf0 75%);
+  background-size: 12px 12px;
+  background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+}
+
+.pixelated { image-rendering: pixelated; }
+
+/* kiln heat: cool glaze → amber → ember as a job heats up */
+.heat-track { background: #e8ece9; }
+.heat-bar {
+  background: linear-gradient(90deg, var(--color-glaze) 0%, var(--color-amber) 55%, var(--color-ember) 100%);
+  background-size: 260px 100%;
+}
+.heat-running { animation: flicker 1.6s ease-in-out infinite; }
+@keyframes flicker { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.2); } }
+
+.panel { background: var(--color-paper); border: 1px solid var(--color-mat-line); border-radius: 10px; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border-radius: 8px;
+  padding: .42rem .8rem; font-weight: 500; font-size: .85rem; border: 1px solid var(--color-mat-line);
+  background: #fff; color: var(--color-ink); cursor: pointer; transition: background .15s, border-color .15s;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--color-ink-soft); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-fire { background: var(--color-ember); border-color: var(--color-ember-deep); color: #fff; }
+.btn-fire:hover { background: var(--color-ember-deep); border-color: var(--color-ember-deep); }
+.btn-ink { background: var(--color-ink); border-color: var(--color-ink); color: #fff; }
+.btn-ink:hover { background: #2b3448; }
+.btn-ghost { background: transparent; border-color: transparent; }
+.btn-ghost:hover { background: rgba(28, 35, 51, .06); border-color: transparent; }
+.btn-sm { padding: .25rem .55rem; font-size: .78rem; }
+
+.field {
+  width: 100%; border: 1px solid var(--color-mat-line); background: #fff; border-radius: 8px; padding: .42rem .6rem;
+  font-size: .85rem; color: var(--color-ink); outline: none; font-family: inherit;
+}
+.field:focus { border-color: var(--color-glaze); box-shadow: 0 0 0 3px rgba(21, 127, 122, .15); }
+.label { font-size: .74rem; color: var(--color-ink-soft); font-weight: 500; margin-bottom: .25rem; display: block; }
+.eyebrow { font-family: var(--font-mono); font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; color: var(--color-ink-soft); }
+.chip { display: inline-flex; align-items: center; gap: .3rem; font-size: .72rem; padding: .1rem .45rem; border-radius: 999px; border: 1px solid var(--color-mat-line); background: #fff; }
+
+:focus-visible { outline: 2px solid var(--color-glaze); outline-offset: 2px; }
+
+.md h1 { font-family: var(--font-display); font-size: 1.6rem; margin: .6rem 0 .8rem; }
+.md h2 { font-size: 1.12rem; font-weight: 600; margin: 1.2rem 0 .5rem; border-bottom: 1px solid var(--color-mat-line); padding-bottom: .25rem; }
+.md h3 { font-weight: 600; margin: .9rem 0 .4rem; }
+.md p, .md li { line-height: 1.75; font-size: .9rem; }
+.md ul { list-style: disc; padding-left: 1.3rem; }
+.md ol { list-style: decimal; padding-left: 1.3rem; }
+.md table { border-collapse: collapse; margin: .6rem 0; font-size: .84rem; }
+.md th, .md td { border: 1px solid var(--color-mat-line); padding: .3rem .55rem; }
+.md code { font-family: var(--font-mono); font-size: .82em; background: #eef2ef; padding: .05rem .3rem; border-radius: 4px; }
+.md pre { background: var(--color-ink); color: #e9eef3; padding: .8rem; border-radius: 8px; overflow: auto; font-size: .8rem; }
+.md pre code { background: transparent; color: inherit; }
+.md blockquote { border-left: 3px solid var(--color-amber); padding-left: .8rem; color: var(--color-ink-soft); }
+
+.react-flow__node.selected .asset-node { outline: 2px solid var(--color-ember); outline-offset: 3px; }
+.react-flow__attribution { display: none; }
+.react-flow__edge-path { stroke: #9aa4af; stroke-dasharray: 4 4; }
+
+.scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: var(--color-mat-line); border-radius: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

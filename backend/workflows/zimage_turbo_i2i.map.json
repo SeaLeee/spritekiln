@@ -1,0 +1,12 @@
+{
+  "kind": "image_edit",
+  "label": "Z-Image Turbo 图生图 (重绘强度)",
+  "models": ["diffusion_models/z_image_turbo_bf16.safetensors", "text_encoders/qwen_3_4b.safetensors", "vae/ae.safetensors"],
+  "fields": {
+    "prompt": [["27", "text"]],
+    "seed": [["3", "seed"]],
+    "denoise": [["3", "denoise"]],
+    "image": [["40", "image"]]
+  },
+  "output": ["9"]
+}

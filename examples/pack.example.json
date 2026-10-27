@@ -1,0 +1,41 @@
+{
+  "output_dir": "./outputs/forest-pack",
+  "stop_on_error": false,
+  "items": [
+    {
+      "name": "hero",
+      "capability": "pixel_gen",
+      "params": {
+        "template": "px_char_64",
+        "prompt": "forest ranger with a leaf cloak, friendly, front view",
+        "seed": 101
+      }
+    },
+    {
+      "name": "slime",
+      "capability": "pixel_gen",
+      "params": {
+        "template": "px_monster_64",
+        "prompt": "small moss slime with two eyes",
+        "seed": 102
+      }
+    },
+    {
+      "name": "potion",
+      "capability": "pixel_gen",
+      "params": {
+        "template": "px_item_64",
+        "prompt": "green healing potion in a round glass bottle",
+        "seed": 103
+      }
+    },
+    {
+      "name": "ui-sheet",
+      "capability": "ui_gen",
+      "params": {
+        "mode": "pixel",
+        "prompt": "wooden fantasy UI panel with a leaf motif"
+      }
+    }
+  ]
+}

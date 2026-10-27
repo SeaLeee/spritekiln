@@ -1,0 +1,22 @@
+services:
+  spritekiln:
+    build: .
+    image: spritekiln:local
+    container_name: spritekiln
+    ports:
+      # bound to localhost on purpose; put a reverse proxy with auth in front before exposing it
+      - "127.0.0.1:7788:7788"
+    environment:
+      SPRITEKILN_DATA: /app/data
+      # ComfyUI on the host machine (Windows/macOS Docker Desktop)
+      SPRITEKILN_COMFYUI_URL: http://host.docker.internal:8188
+      # local LLM on the host
+      SPRITEKILN_LLM_URL: http://host.docker.internal:11434/v1
+      SPRITEKILN_LLM_MODEL: deepseek-r1:8b
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./data:/app/data
+      # Uncomment to export straight into a Godot project on the host:
+      # - ./godot-project:/godot
+    restart: unless-stopped
