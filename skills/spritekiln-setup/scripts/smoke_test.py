@@ -72,7 +72,9 @@ def main() -> int:
         # 3. run with the deterministic provider
         job = req(url, "POST", "/api/capabilities/pixel_gen/run",
                   {"project_id": project, "source": "smoke-test",
-                   "params": {"template": "px_icon_32", "prompt": "smoke test potion", "provider": "mock"}})
+                   # force the deterministic CPU matte too: a smoke test must not load BiRefNet/torch
+                   "params": {"template": "px_icon_32", "prompt": "smoke test potion",
+                              "provider": "mock", "bg_method": "chroma"}})
         result["job_id"] = job["id"]
         result["providers"] = job.get("providers")
         if (job.get("providers") or {}).get("image") != "mock":
