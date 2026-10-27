@@ -94,12 +94,19 @@ python skills\spritekiln-game-assets\kiln_api.py run pixel_gen `
   --param template=px_char_64 --param "prompt=forest ranger" --output-dir .\out\ranger
 ```
 
-把 `skills\spritekiln-game-assets` 链接到 Claude Code 的 skills 目录后，可以直接用自然语言驱动：
+把 Skill 链接到 Claude Code 的 skills 目录后，可以直接用自然语言驱动；`spritekiln-setup` 负责安装、配置和自检：
 
 ```powershell
 New-Item -ItemType Junction `
   -Path "$env:USERPROFILE\.claude\skills\spritekiln-game-assets" `
   -Target "$PWD\skills\spritekiln-game-assets"
+New-Item -ItemType Junction `
+  -Path "$env:USERPROFILE\.claude\skills\spritekiln-setup" `
+  -Target "$PWD\skills\spritekiln-setup"
+
+# 不安装 Skill 也可以直接跑自检
+python skills\spritekiln-setup\scripts\check_setup.py
+python skills\spritekiln-setup\scripts\smoke_test.py
 ```
 
 ### MCP
