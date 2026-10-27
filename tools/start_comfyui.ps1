@@ -6,7 +6,10 @@
 param(
   [string]$ComfyDir = $env:COMFYUI_DIR,
   [int]$Port = 8188,
-  [string]$Python = ""
+  [string]$Python = "",
+  # 127.0.0.1 keeps ComfyUI off the LAN. Use 0.0.0.0 only when SpriteKiln runs in Docker
+  # (the container reaches the host via host.docker.internal, which cannot hit loopback).
+  [string]$Listen = "127.0.0.1"
 )
 $ErrorActionPreference = "Stop"
 if (-not $ComfyDir) {
@@ -30,7 +33,7 @@ if (Test-Path $torchLib) { $env:PATH = "$torchLib;$env:PATH" }
 $cli = @("main.py")
 $extra = Join-Path $ComfyDir "extra_model_paths.yaml"
 if (Test-Path $extra) { $cli += @("--extra-model-paths-config", $extra) }
-$cli += @("--disable-cuda-malloc", "--port", "$Port")
+$cli += @("--disable-cuda-malloc", "--listen", $Listen, "--port", "$Port")
 
 Set-Location $ComfyDir
 Write-Host "ComfyUI → http://127.0.0.1:$Port   ($py)"

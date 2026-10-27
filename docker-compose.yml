@@ -8,9 +8,10 @@ services:
       - "127.0.0.1:7788:7788"
     environment:
       SPRITEKILN_DATA: /app/data
-      # ComfyUI on the host machine (Windows/macOS Docker Desktop)
+      # Host services must listen on 0.0.0.0 for the container to reach them:
+      #   .\tools\start_comfyui.ps1 -Listen 0.0.0.0
+      #   $env:OLLAMA_HOST="0.0.0.0"; ollama serve
       SPRITEKILN_COMFYUI_URL: http://host.docker.internal:8188
-      # local LLM on the host
       SPRITEKILN_LLM_URL: http://host.docker.internal:11434/v1
       SPRITEKILN_LLM_MODEL: deepseek-r1:8b
     extra_hosts:
