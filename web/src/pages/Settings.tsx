@@ -5,8 +5,13 @@ import { api, PROVIDER_LABEL, type Health } from '../api'
 const KIND_LABEL: Record<string, string> = { image: '生图', image_edit: '图像编辑', video: '动画/视频', llm: '大模型', threed: '3D', bg: '去背景' }
 
 const PROVIDER_FIELDS: { key: string; title: string; note: string; fields: [string, string, boolean?][] }[] = [
-  { key: 'comfyui', title: 'ComfyUI（本地）', note: 'Z-Image Turbo 生图/重绘 · MiniMax H3 首尾帧动画。启动：tools/start_comfyui.ps1',
-    fields: [['base_url', '地址'], ['image_workflow', '生图工作流'], ['img2img_workflow', '重绘工作流'], ['video_workflow', '视频工作流'], ['video_steps', '视频步数']] },
+  { key: 'ccswitch', title: 'cc-switch（Agent 首选）', note: '读取本机 cc-switch 当前 Codex provider 的模型与代理端口，Key 由 cc-switch 注入。地址/模型留空 = 自动跟随；代理没开时自动落到本地大模型。',
+    fields: [['base_url', '代理地址（留空自动）'], ['model', '模型（留空自动）'], ['api_key', 'Key（通常不需要）', true]] },
+  { key: 'comfyui', title: 'ComfyUI（本地）', note: 'Z-Image Turbo 生图/重绘 · MiniMax H3 首尾帧动画。模型文件留空 = 用工作流内置文件名；要换模型就填 ComfyUI models/ 下的相对路径。',
+    fields: [['base_url', '地址'], ['image_workflow', '生图工作流'], ['img2img_workflow', '重绘工作流'], ['video_workflow', '视频工作流'], ['video_steps', '视频步数'],
+      ['image_model', '生图主模型'], ['text_encoder', '文本编码器'], ['vae', 'VAE'],
+      ['video_model', '视频主模型'], ['video_lora', '视频 LoRA'], ['video_text_encoder', '视频文本编码器'],
+      ['video_vae', '视频 VAE'], ['video_audio_vae', '音频 VAE']] },
   { key: 'pixal3d', title: 'Pixal3D（本地 3D）', note: '单图 → PBR GLB。3090 建议开启低显存（1024 分辨率）。',
     fields: [['repo', '仓库目录'], ['python', 'venv Python'], ['resolution', '分辨率'], ['low_vram', '低显存模式']] },
   { key: 'llm_local', title: '本地大模型（Ollama / LM Studio）', note: 'OpenAI 兼容接口；用于 Agent 规划与策划文档。',
@@ -22,8 +27,13 @@ const PROVIDER_FIELDS: { key: string; title: string; note: string; fields: [stri
 export default function Settings() {
   const [s, setS] = useState<any>(null)
   const [health, setHealth] = useState<Health | null>(null)
+  const [cc, setCc] = useState<{ ok: boolean; provider: string; model: string; base_url: string; proxy: boolean; detail: string } | null>(null)
   const [saved, setSaved] = useState('')
-  const load = () => { api.settings().then(setS); api.health(true).then(setHealth) }
+  const load = () => {
+    api.settings().then(setS)
+    api.health(true).then(setHealth)
+    api.ccswitch().then(setCc).catch(() => setCc(null))
+  }
   useEffect(() => { load() }, [])
   if (!s) return <div className="p-8 text-ink-soft">加载设置…</div>
   const setProv = (k: string, f: string, v: any) => setS((x: any) => ({ ...x, providers: { ...x.providers, [k]: { ...x.providers[k], [f]: v } } }))
@@ -47,7 +57,10 @@ export default function Settings() {
 
         <section>
           <h2 className="font-semibold mb-1">路由</h2>
-          <p className="text-sm text-ink-soft mb-3">“自动”= 按偏好顺序使用第一个可用引擎（本地优先，云端兜底，最后离线程序化）。每次任务也可在表单里单独指定。</p>
+          <p className="text-sm text-ink-soft mb-3">“自动”= 按偏好顺序使用第一个可用引擎。大模型顺序是 cc-switch → 本地模型 → 云端 → 规则；图像/视频是本地优先、云端兜底、最后离线程序化。每次任务也可在表单里单独指定。</p>
+          <div className="text-[12px] mb-3 text-ink-soft">
+            cc-switch：{cc ? (cc.ok ? `${cc.provider} · ${cc.model} · ${cc.base_url}` : cc.detail) : '读取中…'}
+          </div>
           <div className="grid sm:grid-cols-3 gap-3">
             {Object.keys(KIND_LABEL).map((k) => (
               <div key={k} className="panel p-3">

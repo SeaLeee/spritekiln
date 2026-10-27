@@ -130,6 +130,13 @@ async def comfy_workflows():
     return list_workflows()
 
 
+@app.get("/api/ccswitch")
+async def ccswitch_info():
+    """The live cc-switch selection the Agent would use. Never returns credentials."""
+    from .providers.ccswitch import discover
+    return discover(force=True)
+
+
 # ------------------------------------------------------------------ projects
 @app.get("/api/projects")
 async def list_projects():

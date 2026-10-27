@@ -9,7 +9,8 @@ SpriteKiln 默认是**单用户、本机运行**的工具，不是多租户 SaaS
 - `GET/PUT /api/settings` 可以读写模型配置；返回给浏览器的 Key 会被掩码，但**本机任何进程都能调用 API**。
 - 云端 Key 以明文保存在 `data/settings.json`（gitignored）。不要把这个文件放进镜像、备份仓库或共享目录。
 - 生成的文件通过 `/files` 静态目录直接暴露；路径由服务端生成，但仍不建议把整个 `data/` 挂到公网 Web 根目录。
-- 内置 Agent 会把你的提示词发送给所配置的 LLM（本地 Ollama 或云端）。接云端模型前请确认数据合规要求。
+- 内置 Agent 会把你的提示词发送给所配置的 LLM（cc-switch 代理、本地 Ollama 或云端）。接云端模型前请确认数据合规要求。
+- cc-switch 集成只**只读** `~/.cc-switch/cc-switch.db` 中的 provider 名称、模型 ID 与代理端口，不读取或复制 API Key；Key 由 cc-switch 本地代理注入。`/api/ccswitch` 也不返回密钥。但该代理本身是可信边界：不要把它监听到公网，也不要让不可信的本机进程改写 cc-switch 配置。
 
 ## 部署到公网前必须做的
 

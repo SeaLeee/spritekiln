@@ -140,8 +140,14 @@ async def plan_for(message: str, attachments: list[str], history: list[dict]) ->
         att = f"\n附带素材: {', '.join(attachments)}" if attachments else ""
         msgs.append({"role": "user", "content": message + att})
         try:
-            raw = await llm.chat(msgs, temperature=0.2, json_mode=True, max_tokens=1500)
-            data = _extract_json(raw)
+            # Reasoning models occasionally answer in prose despite json_mode; one retry is
+            # cheaper than dropping straight to the keyword router.
+            data = None
+            for _ in range(2):
+                raw = await llm.chat(msgs, temperature=0.2, json_mode=True, max_tokens=1500)
+                data = _extract_json(raw)
+                if data is not None:
+                    break
             if data is not None:
                 plan = [s for s in data.get("plan", []) if s.get("capability") in capabilities.REGISTRY
                         or s.get("capability") in capabilities.ALIASES]

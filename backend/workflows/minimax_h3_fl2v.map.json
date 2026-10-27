@@ -7,6 +7,13 @@
              "vae/minimax_h3_video_vae_fp16.safetensors", "vae/minimax_h3_audio_vae_fp32.safetensors"],
   "native_fps": 24,
   "length_rule": "h3",
+  "model_fields": {
+    "video_model": [["1", "unet_name"]],
+    "video_lora": [["2", "lora_name"]],
+    "video_text_encoder": [["3", "clip_name"]],
+    "video_vae": [["4", "vae_name"]],
+    "video_audio_vae": [["5", "vae_name"]]
+  },
   "fields": {
     "prompt": [["6", "prompt"]],
     "width": [["6", "width"]],

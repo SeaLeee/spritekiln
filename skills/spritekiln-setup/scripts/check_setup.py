@@ -112,6 +112,10 @@ def main() -> int:
     server_ok, system = get_json(f"{url}/api/system", 5)
     health_ok, health = get_json(f"{url}/api/health?force=true", 30)
     routes = health.get("routes", {}) if health_ok and isinstance(health, dict) else {}
+    cc_ok, cc = get_json(f"{url}/api/ccswitch", 10) if server_ok else (False, {"detail": "服务未运行"})
+    cc = cc if isinstance(cc, dict) else {"detail": str(cc)}
+    cc_db = Path(os.environ.get("SPRITEKILN_CCSWITCH_DB")
+                 or (Path(os.environ.get("CCSWITCH_HOME") or Path.home() / ".cc-switch") / "cc-switch.db"))
     unhealthy: list[str] = []
     disabled: list[str] = []
     if health_ok and isinstance(health, dict):
@@ -146,6 +150,9 @@ def main() -> int:
         "data_dir": str(data_dir),
         "data_writable": data_writable,
         "env_file": env_file,
+        "ccswitch": {"db": str(cc_db), "db_found": cc_db.is_file(), "ok": bool(cc.get("ok")),
+                     "provider": cc.get("provider", ""), "model": cc.get("model", ""),
+                     "base_url": cc.get("base_url", ""), "detail": cc.get("detail", "")},
         "server": {"url": url, "ok": server_ok, "system": system if server_ok else system,
                    "health_ok": health_ok, "routes": routes, "unhealthy": unhealthy, "disabled": disabled},
         "core_ok": core_ok,
@@ -171,6 +178,12 @@ def main() -> int:
         print(f"{'OK  ' if dist_ok else 'WARN'} web/dist: {'已构建' if dist_ok else '未构建'}")
         print(f"{'OK  ' if data_writable else 'FAIL'} data dir: {data_dir}")
         print(f"INFO .env: {'存在' if env_file else '不存在（可选）'}")
+        if cc.get("ok"):
+            print(f"OK   cc-switch: {cc.get('provider')} · {cc.get('model')}  ({cc.get('base_url')})")
+        else:
+            print(f"INFO cc-switch: {cc.get('detail')}（Agent 会回退本地模型）")
+        if not cc_db.is_file():
+            print(f"INFO cc-switch db 未找到: {cc_db}")
         if server_ok:
             print(f"OK   server: {url}  version={system.get('version') if isinstance(system, dict) else '?'}")
             print(f"{'OK  ' if health_ok else 'FAIL'} /api/health")

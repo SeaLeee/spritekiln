@@ -117,6 +117,7 @@ export const api = {
   health: (force = false) => req<Health>('GET', `/api/health${force ? '?force=true' : ''}`),
   settings: () => req<any>('GET', '/api/settings'),
   saveSettings: (patch: any) => req<any>('PUT', '/api/settings', patch),
+  ccswitch: () => req<{ ok: boolean; base_url: string; model: string; provider: string; proxy: boolean; db: string; detail: string }>('GET', '/api/ccswitch'),
   capabilities: () => req<{ modules: Record<string, { name: string; desc: string }>; capabilities: Capability[] }>('GET', '/api/capabilities'),
   templates: () => req<any>('GET', '/api/templates'),
   projects: () => req<Project[]>('GET', '/api/projects'),
@@ -236,5 +237,5 @@ export function timeAgo(ts: number) {
 
 export const PROVIDER_LABEL: Record<string, string> = {
   comfyui: 'ComfyUI', openai: 'GPT Image', ark: '火山方舟', minimax: 'MiniMax', mock: '离线', procedural: '程序化',
-  llm_local: '本地 LLM', rules: '规则', pixal3d: 'Pixal3D', birefnet: 'BiRefNet', chroma: '键控',
+  ccswitch: 'cc-switch', llm_local: '本地 LLM', rules: '规则', pixal3d: 'Pixal3D', birefnet: 'BiRefNet', chroma: '键控',
 }

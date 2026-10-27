@@ -2,6 +2,11 @@
   "kind": "image_edit",
   "label": "Z-Image Turbo 图生图 (重绘强度)",
   "models": ["diffusion_models/z_image_turbo_bf16.safetensors", "text_encoders/qwen_3_4b.safetensors", "vae/ae.safetensors"],
+  "model_fields": {
+    "image_model": [["28", "unet_name"]],
+    "text_encoder": [["30", "clip_name"]],
+    "vae": [["29", "vae_name"]]
+  },
   "fields": {
     "prompt": [["27", "text"]],
     "seed": [["3", "seed"]],

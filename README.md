@@ -4,6 +4,7 @@
 
 - 26 个能力：像素、高清、角色多视图、UI、编辑、无缝纹理、双网格瓦片、等角瓦片、横版视差、帧动画、关键帧动画、视频、3D、策划文档
 - 三级路由：本地优先 → 云端兜底 → 离线程序化兜底；任何一环没配好都不会让流水线停摆
+- Agent 首选本机 cc-switch（自动跟随其当前 Codex provider，Key 不落地），没开时用本地 Ollama，再退云端/规则
 - 产物即工程文件：Sprite Sheet、GIF/WebP、Godot SpriteFrames/.tscn、Aseprite JSON、Phaser atlas、Tiled `.tsj`
 - 质量门控：动画逐帧检查空帧/面积波动/尺寸漂移/重复帧，不通过自动换 seed 重拍
 - 批量：JSON manifest 一次产出整套素材，写 `batch_report.json`
@@ -61,21 +62,38 @@ docker compose up --build
 
 ---
 
+## 界面预览
+
+<table>
+  <tr>
+    <td width="50%"><b>首页</b> — 能力入口与实时引擎状态<br><img src="docs/images/home.png" alt="首页"></td>
+    <td width="50%"><b>工作台</b> — 画布 + 能力参数 + Agent 对话<br><img src="docs/images/studio.png" alt="工作台"></td>
+  </tr>
+  <tr>
+    <td width="50%"><b>设置</b> — 路由与模型服务（大模型首选 cc-switch）<br><img src="docs/images/settings.png" alt="设置"></td>
+    <td width="50%"><b>项目</b> — 素材、动画、导出按项目隔离<br><img src="docs/images/projects.png" alt="项目"></td>
+  </tr>
+</table>
+
+截图来自本机 ComfyUI（Z-Image Turbo + MiniMax H3）真实生成的项目，不是效果图。设置页的「大模型 → 自动 → cc-switch」后面就是 cc-switch 当前选中的 provider 与模型名。
+
+---
+
 ## 配置模型
 
 所有配置都在网页 **设置** 页，保存到 `data/settings.json`（API Key 明文，已 gitignore；返回浏览器时掩码）。
 
 | 想做什么 | 配哪里 |
 |---|---|
-| 本地生图/动画 | ComfyUI 地址 + 工作流名 + 按 [模型清单](docs/07-模型配置.md#32-需要哪些模型) 放置权重 |
-| Agent 规划 | 本地大模型（Ollama / LM Studio，OpenAI 兼容）或云端 LLM |
-| 云端生图/视频 | OpenAI / 火山方舟 / MiniMax 的 Key 与模型名 |
+| 本地生图/动画 | ComfyUI 地址 + 工作流名 + 模型文件名；按 [模型清单](docs/07-模型配置.md#32-需要哪些模型) 放置权重 |
+| Agent 规划 | 首选 cc-switch（自动跟随其当前 Codex provider）；没开时用本地大模型（Ollama / LM Studio）或云端 LLM |
+| 云端生图/视频 | OpenAI / 火山方舟 / MiniMax 的 Key 与图像/视频/对话模型名 |
 | 单图转 3D | Pixal3D 仓库目录 + 独立 venv 的 Python |
 | 神经抠图 | `pip install torch …` 并预下载 `ZhengPeng7/BiRefNet` |
 
 环境变量模板见 [`.env.example`](.env.example)。优先级：`data/settings.json` > 环境变量/`.env` > 内置默认值。
 
-**关于 ccswitch**：它切换的是 Claude Code / Codex 自身使用的模型，和 SpriteKiln 的内置 Agent 无关。要让 Agent 用同一个服务，在设置页单独填相同的 `base_url` / 模型 / Key。详见 [07-模型配置.md](docs/07-模型配置.md#44-ccswitch-和这个-agent-是什么关系)。
+**关于 cc-switch**：Agent 的**首选**模型来源就是本机 cc-switch。它只读 `~/.cc-switch/cc-switch.db` 拿到当前 Codex provider 的模型名和本地代理端口，Key 由 cc-switch 代理自己注入，SpriteKiln 不复制凭据。cc-switch 没运行或代理没开时，自动落到本地大模型，再往后是云端和规则路由。详见 [07-模型配置.md](docs/07-模型配置.md#41-cc-switch首选自动跟随)。
 
 ---
 
@@ -150,7 +168,7 @@ python skills\spritekiln-game-assets\kiln_api.py batch examples\pack.example.jso
 ## 测试
 
 ```powershell
-python -m pytest backend/tests -q     # 14 passed，离线、无 GPU
+python -m pytest backend/tests -q     # 20 passed，离线、无 GPU
 cd web; npm run build                 # 前端类型检查 + 构建
 ```
 
@@ -207,7 +225,7 @@ CI 在 GitHub Actions 上跑同样的两步。
 <details>
 <summary>English</summary>
 
-SpriteKiln is a local-first AI game-asset studio. A web canvas, a standard-library CLI/Skill, an MCP server and a built-in agent share one capability catalog (26 capabilities) covering pixel/HD art, characters, UI, tilesets, parallax maps, animation, 3D and design docs. Generation runs on local ComfyUI (Z-Image Turbo, MiniMax H3), Pixal3D, Ollama and BiRefNet, with optional cloud providers (GPT Image, Seedream/Seedance, MiniMax). Outputs ship as sprite sheets, GIF/WebP, Godot SpriteFrames, Aseprite JSON, Phaser atlases, Tiled tilesets and ZIP packs.
+SpriteKiln is a local-first AI game-asset studio. A web canvas, a standard-library CLI/Skill, an MCP server and a built-in agent share one capability catalog (26 capabilities) covering pixel/HD art, characters, UI, tilesets, parallax maps, animation, 3D and design docs. Generation runs on local ComfyUI (Z-Image Turbo, MiniMax H3), Pixal3D, Ollama and BiRefNet, with optional cloud providers (GPT Image, Seedream/Seedance, MiniMax). The built-in agent prefers the local cc-switch proxy (following whichever Codex provider is selected) and falls back to Ollama, cloud LLMs and rule-based planning. Every model name — image, video, LLM and ComfyUI weight files — is editable in Settings. Outputs ship as sprite sheets, GIF/WebP, Godot SpriteFrames, Aseprite JSON, Phaser atlases, Tiled tilesets and ZIP packs.
 
 Quick start: `pip install -r backend/requirements.txt`, build `web/` with `npm ci && npm run build`, then `python backend/run.py`. Without local models or cloud keys the router falls back to deterministic mock/procedural engines. Docs are currently in Chinese; start with [docs/06](docs/06-本地化使用说明.md) and [docs/07](docs/07-模型配置.md).
 

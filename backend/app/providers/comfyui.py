@@ -43,6 +43,18 @@ def patch(graph: dict, fmap: dict, values: dict[str, Any]) -> dict:
     return g
 
 
+def apply_model_overrides(graph: dict, fmap: dict, cfg: dict) -> dict:
+    """Replace model filenames from settings when provided; empty values keep the workflow's own."""
+    for field, pairs in (fmap.get("model_fields") or {}).items():
+        value = str(cfg.get(field) or "").strip()
+        if not value:
+            continue
+        for node_id, key in pairs:
+            if node_id in graph:
+                graph[node_id].setdefault("inputs", {})[key] = value
+    return graph
+
+
 def _round16(v: int) -> int:
     return max(64, int(round(v / 16)) * 16)
 
@@ -188,6 +200,7 @@ class ComfyImageProvider(ImageProvider):
         g = patch(graph, fmap, {"prompt": prompt, "negative": negative or None,
                                 "seed": seed if seed is not None else random.randint(0, 2 ** 31),
                                 "width": _round16(width), "height": _round16(height), "batch": n, "steps": steps})
+        apply_model_overrides(g, fmap, cfg)
         outputs = await _client().run(g, ctx, "Z-Image", cfg.get("timeout", 1800))
         imgs = await _client().images_from(outputs, fmap.get("output"))
         if not imgs:
@@ -205,6 +218,7 @@ class ComfyImageProvider(ImageProvider):
         name = await _client().upload(bg.convert("RGB").resize((w, h), Image.Resampling.LANCZOS))
         g = patch(graph, fmap, {"prompt": prompt, "image": name, "denoise": float(max(0.05, min(1.0, strength))),
                                 "seed": seed if seed is not None else random.randint(0, 2 ** 31)})
+        apply_model_overrides(g, fmap, cfg)
         outputs = await _client().run(g, ctx, "Z-Image 重绘", cfg.get("timeout", 1800))
         return await _client().images_from(outputs, fmap.get("output"))
 
@@ -241,6 +255,7 @@ class ComfyVideoProvider(VideoProvider):
             "seed": seed if seed is not None else random.randint(0, 2 ** 31), "length": length,
             "steps": cfg.get("video_steps") or None,
         })
+        apply_model_overrides(g, fmap, cfg)
         outputs = await c.run(g, ctx, fmap.get("label", "视频模型"), cfg.get("timeout", 1800))
         frames = await c.images_from(outputs, fmap.get("output"))
         if not frames:

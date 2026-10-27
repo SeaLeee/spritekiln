@@ -35,7 +35,7 @@ Pick one primary capability. Inspect it with `kiln_api.py describe <id>`.
 
 Each job resolves engines at submit time (shown as `providers` in the job). Default `auto` = first healthy engine
 in this order — image: ComfyUI(Z-Image) → GPT Image → Seedream → MiniMax → offline; video: ComfyUI(MiniMax H3 FL2V)
-→ Seedance → Hailuo → procedural; 3D: Pixal3D → billboard; LLM: local Ollama → cloud → rules.
+→ Seedance → Hailuo → procedural; 3D: Pixal3D → billboard; LLM: cc-switch proxy → local Ollama → cloud → rules.
 
 Override per job only when the user asks or the output needs it:
 

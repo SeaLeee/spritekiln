@@ -42,7 +42,10 @@ MASK = "••••••"
 for _d in (DATA_DIR, PROJECTS_DIR, TMP_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
+SCHEMA_VERSION = 2
+
 DEFAULT_SETTINGS: dict[str, Any] = {
+    "schema": SCHEMA_VERSION,
     "routing": {
         # auto = first healthy enabled provider in the preference list, else mock
         "image": "auto",
@@ -56,11 +59,23 @@ DEFAULT_SETTINGS: dict[str, Any] = {
         "image": ["comfyui", "openai", "ark", "minimax", "mock"],
         "image_edit": ["openai", "ark", "comfyui", "mock"],
         "video": ["comfyui", "ark", "minimax", "procedural"],
-        "llm": ["llm_local", "openai", "ark", "minimax", "rules"],
+        # cc-switch first: if its Codex proxy is running, the agent uses whatever provider
+        # cc-switch currently has selected; otherwise it falls through to the local model.
+        "llm": ["ccswitch", "llm_local", "openai", "ark", "minimax", "rules"],
         "threed": ["pixal3d", "mock"],
         "bg": ["birefnet", "chroma"],
     },
     "providers": {
+        "ccswitch": {
+            # cc-switch's Codex proxy (OpenAI-compatible chat). Leave base_url/model empty to
+            # auto-read the live selection from ~/.cc-switch/cc-switch.db; fill them to point at
+            # any other local OpenAI-compatible proxy instead.
+            "enabled": True,
+            "base_url": os.environ.get("SPRITEKILN_CCSWITCH_URL", ""),
+            "model": os.environ.get("SPRITEKILN_CCSWITCH_MODEL", ""),
+            "api_key": "",
+            "timeout": 600,
+        },
         "comfyui": {
             "enabled": True,
             "base_url": os.environ.get("SPRITEKILN_COMFYUI_URL", "http://127.0.0.1:8188"),
@@ -68,6 +83,16 @@ DEFAULT_SETTINGS: dict[str, Any] = {
             "img2img_workflow": "zimage_turbo_i2i",
             "video_workflow": "minimax_h3_fl2v",
             "video_steps": 8,
+            # Model files inside ComfyUI. Empty = keep the filenames baked into the workflow.
+            # Paths are relative to ComfyUI's models/ folder (include subfolders, e.g. loras/foo.safetensors).
+            "image_model": "",
+            "text_encoder": "",
+            "vae": "",
+            "video_model": "",
+            "video_lora": "",
+            "video_text_encoder": "",
+            "video_vae": "",
+            "video_audio_vae": "",
             "timeout": 1800,
         },
         "openai": {
@@ -133,6 +158,25 @@ def _merge(base: dict, extra: dict) -> dict:
     return out
 
 
+def _migrate(merged: dict[str, Any], stored: dict[str, Any]) -> dict[str, Any]:
+    """Versioned upgrades for settings files written by older releases.
+
+    v2 puts cc-switch at the front of the LLM preference list, for installs that already
+    saved a preference list without it. A saved ``schema`` keeps a deliberate removal
+    (e.g. user unchecked/removed ccswitch) from being re-applied on every restart.
+    """
+    try:
+        version = int(stored.get("schema", 1))
+    except (TypeError, ValueError):
+        version = 1
+    if version < SCHEMA_VERSION:
+        llm = merged.setdefault("preference", {}).setdefault("llm", [])
+        if "ccswitch" not in llm:
+            llm.insert(0, "ccswitch")
+        merged["schema"] = SCHEMA_VERSION
+    return merged
+
+
 def get_settings() -> dict[str, Any]:
     global _settings
     with _lock:
@@ -143,7 +187,7 @@ def get_settings() -> dict[str, Any]:
                     stored = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
                 except json.JSONDecodeError:
                     stored = {}
-            _settings = _merge(DEFAULT_SETTINGS, stored)
+            _settings = _migrate(_merge(DEFAULT_SETTINGS, stored), stored)
         return _settings
 
 

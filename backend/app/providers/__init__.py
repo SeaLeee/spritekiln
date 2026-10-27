@@ -7,6 +7,7 @@ from typing import Any
 
 from ..config import get_settings, provider_cfg
 from .base import ImageProvider, LLMProvider, Provider, ProviderError, ThreeDProvider, VideoProvider
+from .ccswitch import CcSwitchLLM
 from .cloud import ArkImageProvider, ArkVideoProvider, MiniMaxImageProvider, MiniMaxVideoProvider
 from .comfyui import ComfyImageProvider, ComfyVideoProvider
 from .mock import MockImageProvider, MockThreeDProvider, ProceduralVideoProvider, RulesLLM
@@ -31,7 +32,8 @@ REGISTRY: dict[str, dict[str, Provider]] = {
               "minimax": MiniMaxImageProvider(), "mock": MockImageProvider()},
     "video": {"comfyui": ComfyVideoProvider(), "ark": ArkVideoProvider(), "minimax": MiniMaxVideoProvider(),
               "procedural": ProceduralVideoProvider()},
-    "llm": {"llm_local": OpenAICompatLLM("llm_local", "本地大模型 (Ollama/LM Studio)", "llm_local", "model", lane="gpu"),
+    "llm": {"ccswitch": CcSwitchLLM(),
+            "llm_local": OpenAICompatLLM("llm_local", "本地大模型 (Ollama/LM Studio)", "llm_local", "model", lane="gpu"),
             "openai": OpenAICompatLLM("openai", "OpenAI Chat", "openai", "llm_model"),
             "ark": OpenAICompatLLM("ark", "火山方舟 豆包", "ark", "llm_model"),
             "minimax": OpenAICompatLLM("minimax", "MiniMax Chat", "minimax", "llm_model"),

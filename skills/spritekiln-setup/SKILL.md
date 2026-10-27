@@ -23,7 +23,7 @@ Work from the repository root (the folder containing `backend/app/main.py`, `web
 python skills\spritekiln-setup\scripts\check_setup.py
 ```
 
-It checks Python version, required imports, Node/npm, built frontend, data-dir writability, `.env`, and (if the server is up) `/api/system` + `/api/health`. Add `--json` for machine-readable output.
+It checks Python version, required imports, Node/npm, built frontend, data-dir writability, `.env`, cc-switch discovery, and (if the server is up) `/api/system` + `/api/health` + `/api/ccswitch`. Add `--json` for machine-readable output.
 
 Interpretation:
 
@@ -71,7 +71,8 @@ Choose the path that matches the user's hardware:
 |---|---|---|
 | Local image + image-edit | `comfyui` | base_url, workflow names, model files under ComfyUI `models/` |
 | Local animation | `comfyui` | H3 workflow + `MiniMaxH3*` custom nodes + weights |
-| Agent planning | `llm_local` | OpenAI-compatible base_url, model, placeholder key |
+| Agent planning (preferred) | `ccswitch` | cc-switch running with its Codex proxy enabled; auto-discovers provider/model, no key needed |
+| Agent planning (fallback) | `llm_local` | OpenAI-compatible base_url, model, placeholder key |
 | Cloud image/video | `openai` / `ark` / `minimax` | api_key + model names |
 | Image → 3D | `pixal3d` | repo dir + its venv python |
 | Neural matting | `birefnet` | torch/transformers + pre-downloaded HF weights |
@@ -96,7 +97,7 @@ macOS/Linux 用 `curl -X PUT ... -d '<json>'`。注意：只发送要改的字�
 
 Set `routing` explicitly only when the user wants a fixed engine; otherwise keep `auto` and order the preference list. Per-job overrides: `provider` (image/edit), `video_provider`, `threed_provider`, `bg_method`.
 
-**ccswitch is unrelated.** It switches the external Claude Code/Codex model. SpriteKiln's built-in agent reads `routing.llm` + `providers.llm_local`. To share a provider, duplicate base_url/model/key in SpriteKiln's settings.
+**cc-switch is the agent's first-priority LLM.** SpriteKiln reads `~/.cc-switch/cc-switch.db` **read-only** for the current Codex provider's name, model ID and proxy port, then calls the cc-switch Codex proxy (default `127.0.0.1:15721`, OpenAI-compatible). Keys stay with cc-switch; never copy them. Verify with `GET /api/ccswitch` (never returns secrets). If it reports `ok:false`, the agent falls back to `llm_local` → cloud LLMs → `rules`. Leave `providers.ccswitch.base_url` / `model` empty to follow cc-switch live; set them only for a different local proxy. Switching providers in cc-switch takes effect within ~10 s (or force `/api/health?force=true`).
 
 ## 4 · Verify
 
@@ -139,7 +140,7 @@ Mention every fallback explicitly, plus the next action to fix it. Do not claim 
 |---|---|---|
 | `无法连接 SpriteKiln` | server not running / wrong port | start `backend/run.py`, check `SPRITEKILN_URL` |
 | ComfyUI `ok=false` | not running, wrong URL, missing model/node | open `http://127.0.0.1:8188/system_stats`; compare `/api/comfy/workflows` models with disk |
-| Agent replies “已用规则路由” | local LLM down or bad JSON | `ollama serve`, `ollama pull <model>`, match model ID |
+| Agent replies “已用规则路由” | cc-switch and local LLM both down, or bad JSON | `GET /api/ccswitch` for the cc-switch reason; then `ollama serve`, `ollama pull <model>`, match model ID |
 | Everything routes to `mock` | no healthy real provider | health detail tells which check failed |
 | `npm` missing | Node not installed | install Node 18+, rebuild `web/` |
 | Pixal3D “未配置” | repo/python empty | set in 设置 or `SPRITEKILN_PIXAL3D_*` |
