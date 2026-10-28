@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+from collections.abc import AsyncIterator
 from typing import Any
 
 from .. import capabilities, db
@@ -135,22 +136,18 @@ async def plan_for(message: str, attachments: list[str], history: list[dict]) ->
     llm_name = await resolve("llm")
     llm = get_provider("llm", llm_name)
     if llm_name != "rules":
-        msgs = [{"role": "system", "content": SYSTEM + catalog_text()}]
-        msgs += [{"role": m["role"], "content": m["content"]} for m in history[-8:] if m["role"] in ("user", "assistant")]
-        att = f"\n附带素材: {', '.join(attachments)}" if attachments else ""
-        msgs.append({"role": "user", "content": message + att})
+        msgs = _prompt_messages(message, attachments, history)
         try:
             # Reasoning models occasionally answer in prose despite json_mode; one retry is
             # cheaper than dropping straight to the keyword router.
             data = None
             for _ in range(2):
-                raw = await llm.chat(msgs, temperature=0.2, json_mode=True, max_tokens=1500)
+                raw = await llm.chat(msgs, temperature=0.2, json_mode=True, max_tokens=6000)
                 data = _extract_json(raw)
                 if data is not None:
                     break
             if data is not None:
-                plan = [s for s in data.get("plan", []) if s.get("capability") in capabilities.REGISTRY
-                        or s.get("capability") in capabilities.ALIASES]
+                plan = _clean_plan(data)
                 if plan or not _actionable(message):
                     return data.get("reply", "") or raw[:400], plan, llm_name
             reply, plan = rule_plan(message, attachments)
@@ -160,6 +157,64 @@ async def plan_for(message: str, attachments: list[str], history: list[dict]) ->
             return f"大模型不可用（{type(exc).__name__}），已切换规则路由。\n{reply}", plan, "rules"
     reply, plan = rule_plan(message, attachments)
     return reply, plan, "rules"
+
+
+def _prompt_messages(message: str, attachments: list[str], history: list[dict]) -> list[dict]:
+    msgs = [{"role": "system", "content": SYSTEM + catalog_text()}]
+    msgs += [{"role": m["role"], "content": m["content"]} for m in history[-8:] if m["role"] in ("user", "assistant")]
+    att = f"\n附带素材: {', '.join(attachments)}" if attachments else ""
+    msgs.append({"role": "user", "content": message + att})
+    return msgs
+
+
+def _clean_plan(data: dict) -> list[dict]:
+    return [s for s in data.get("plan", []) if s.get("capability") in capabilities.REGISTRY
+            or s.get("capability") in capabilities.ALIASES]
+
+
+async def plan_events(message: str, attachments: list[str], history: list[dict]) -> AsyncIterator[dict]:
+    """Streaming twin of :func:`plan_for`.
+
+    Emits ``status`` / ``meta`` first, then ``reasoning`` deltas while the model thinks and
+    ``notice`` when it retries or falls back, and finally one ``plan`` event. The UI uses the
+    reasoning stream as the "it's alive" signal instead of a silent spinner.
+    """
+    yield {"type": "status", "text": "正在选择模型…"}
+    llm_name = await resolve("llm")
+    llm = get_provider("llm", llm_name)
+    yield {"type": "meta", "llm": llm_name, "label": llm.label}
+    if llm_name != "rules":
+        msgs = _prompt_messages(message, attachments, history)
+        for attempt in range(2):
+            buf: list[str] = []
+            # Reasoning models spend completion tokens on thinking first; 1500 was often
+            # exhausted before the JSON arrived. The retry gets a bigger budget.
+            budget = 6000 if attempt == 0 else 8000
+            try:
+                async for kind, delta in llm.chat_stream(msgs, temperature=0.2, json_mode=True, max_tokens=budget):
+                    if kind == "reasoning":
+                        yield {"type": "reasoning", "text": delta}
+                    else:
+                        buf.append(delta)
+                        yield {"type": "content", "text": delta}
+            except Exception as exc:  # noqa: BLE001
+                yield {"type": "notice", "text": f"大模型不可用（{type(exc).__name__}），改用规则路由"}
+                break
+            raw = "".join(buf)
+            data = _extract_json(raw)
+            if data is not None:
+                plan = _clean_plan(data)
+                if plan or not _actionable(message):
+                    yield {"type": "plan", "reply": data.get("reply", "") or raw[:400], "plan": plan, "llm": llm_name}
+                    return
+            if attempt == 0:
+                yield {"type": "notice", "text": "模型没有给出可执行计划，重试一次"}
+        reply, plan = rule_plan(message, attachments)
+        prefix = f"（{llm.label} 未给出可执行计划，已用规则路由）\n" if llm_name != "rules" else ""
+        yield {"type": "plan", "reply": prefix + reply, "plan": plan, "llm": "rules"}
+        return
+    reply, plan = rule_plan(message, attachments)
+    yield {"type": "plan", "reply": reply, "plan": plan, "llm": "rules"}
 
 
 def _first_output(job: dict) -> str | None:
@@ -241,3 +296,43 @@ async def chat(project_id: str, thread_id: str | None, message: str, attachments
         text += f"\n\n执行失败：{error}"
     msg = add_message(thread_id, project_id, "assistant", text, {"plan": plan, "job_ids": job_ids, "llm": llm_name})
     return {"thread_id": thread_id, "message": msg, "plan": plan, "job_ids": job_ids, "llm": llm_name}
+
+
+async def chat_stream(project_id: str, thread_id: str | None, message: str, attachments: list[str],
+                      execute: bool = True) -> AsyncIterator[dict]:
+    """Same outcome as :func:`chat`, but streams planning progress before the final message.
+
+    Event types: start · status · meta · reasoning · content · notice · plan · done · error.
+    The assistant message is only written once planning finishes, so a disconnect mid-thought
+    leaves the thread with just the user message.
+    """
+    thread_id = thread_id or db.new_id("thr")
+    hist = history(thread_id)
+    add_message(thread_id, project_id, "user", message, {"attachments": attachments})
+    yield {"type": "start", "thread_id": thread_id}
+
+    reply, plan, llm_name = "", [], "rules"
+    reasoning: list[str] = []
+    async for ev in plan_events(message, attachments, hist):
+        if ev["type"] == "reasoning":
+            reasoning.append(ev["text"])
+        elif ev["type"] == "plan":
+            reply, plan, llm_name = ev["reply"], ev["plan"], ev["llm"]
+        yield ev
+
+    job_ids: list[str] = []
+    error = None
+    if execute and plan:
+        try:
+            job_ids = await run_plan(plan, project_id, thread_id)
+        except Exception as exc:  # noqa: BLE001
+            error = f"{type(exc).__name__}: {exc}"
+    text = reply or "好的。"
+    if error:
+        text += f"\n\n执行失败：{error}"
+    data: dict[str, Any] = {"plan": plan, "job_ids": job_ids, "llm": llm_name}
+    if reasoning:
+        data["reasoning"] = "".join(reasoning)[-8000:]
+    msg = add_message(thread_id, project_id, "assistant", text, data)
+    yield {"type": "done", "thread_id": thread_id, "message": msg, "plan": plan,
+           "job_ids": job_ids, "llm": llm_name, "error": error}

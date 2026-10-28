@@ -364,6 +364,25 @@ async def agent_chat(body: ChatIn):
     return await agent.chat(pid, body.thread_id, body.message, body.attachments, body.execute)
 
 
+@app.post("/api/agent/chat/stream")
+async def agent_chat_stream(body: ChatIn):
+    """SSE variant: streams the model's reasoning while it plans, then the final plan + job ids."""
+    pid = body.project_id or ensure_default_project()
+
+    async def stream():
+        try:
+            async for ev in agent.chat_stream(pid, body.thread_id, body.message, body.attachments, body.execute):
+                yield f"data: {json.dumps(ev, ensure_ascii=False, default=str)}\n\n"
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # noqa: BLE001 — headers are already sent, so report in-band
+            payload = {"type": "error", "text": f"{type(exc).__name__}: {exc}"}
+            yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(stream(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
 @app.get("/api/agent/threads/{tid}")
 async def agent_thread(tid: str):
     return agent.history(tid)

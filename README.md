@@ -4,7 +4,7 @@
 
 - 26 个能力：像素、高清、角色多视图、UI、编辑、无缝纹理、双网格瓦片、等角瓦片、横版视差、帧动画、关键帧动画、视频、3D、策划文档
 - 三级路由：本地优先 → 云端兜底 → 离线程序化兜底；任何一环没配好都不会让流水线停摆
-- Agent 首选本机 cc-switch（自动跟随其当前 Codex provider，Key 不落地），没开时用本地 Ollama，再退云端/规则
+- Agent 首选本机 cc-switch（自动跟随其当前 Codex provider，Key 不落地），没开时用本地 Ollama，再退云端/规则；对话中实时显示模型的思考过程
 - 产物即工程文件：Sprite Sheet、GIF/WebP、Godot SpriteFrames/.tscn、Aseprite JSON、Phaser atlas、Tiled `.tsj`
 - 质量门控：动画逐帧检查空帧/面积波动/尺寸漂移/重复帧，不通过自动换 seed 重拍
 - 批量：JSON manifest 一次产出整套素材，写 `batch_report.json`
@@ -168,7 +168,7 @@ python skills\spritekiln-game-assets\kiln_api.py batch examples\pack.example.jso
 ## 测试
 
 ```powershell
-python -m pytest backend/tests -q     # 20 passed，离线、无 GPU
+python -m pytest backend/tests -q     # 23 passed，离线、无 GPU
 cd web; npm run build                 # 前端类型检查 + 构建
 ```
 

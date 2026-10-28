@@ -8,7 +8,7 @@ from PIL import Image
 
 from ..config import provider_cfg
 from .base import ImageProvider, LLMProvider, ProviderError
-from .util import b64_to_image, check_budget, client, fetch_image, png_bytes, require
+from .util import b64_to_image, check_budget, client, fetch_image, openai_sse_deltas, png_bytes, require
 
 GPT_SIZES = [(1024, 1024), (1536, 1024), (1024, 1536)]
 QUALITY = {"standard": "low", "detailed": "medium", "ultimate": "high"}
@@ -150,3 +150,24 @@ class OpenAICompatLLM(LLMProvider):
             raise ProviderError(f"{self.label} 调用失败 {r.status_code}: {r.text[:300]}")
         content = r.json()["choices"][0]["message"].get("content") or ""
         return THINK_RE.sub("", content).strip()
+
+    async def chat_stream(self, messages, *, temperature: float = 0.4, json_mode: bool = False,
+                          max_tokens: int = 2048):
+        cfg = self._cfg()
+        headers = {"Authorization": f"Bearer {cfg.get('api_key') or 'none'}"}
+        url = f"{cfg['base_url'].rstrip('/')}/chat/completions"
+        async with client(600) as c:
+            for attempt in range(2 if json_mode else 1):
+                body: dict[str, Any] = {"model": cfg.get(self.model_key), "messages": messages,
+                                        "temperature": temperature, "max_tokens": max_tokens, "stream": True}
+                if json_mode and attempt == 0:
+                    body["response_format"] = {"type": "json_object"}
+                async with c.stream("POST", url, json=body, headers=headers) as r:
+                    if r.status_code >= 400:
+                        detail = (await r.aread()).decode("utf-8", "replace")[:300]
+                        if attempt == 0 and json_mode:
+                            continue
+                        raise ProviderError(f"{self.label} 调用失败 {r.status_code}: {detail}")
+                    async for kind, delta in openai_sse_deltas(r):
+                        yield kind, delta
+                    return

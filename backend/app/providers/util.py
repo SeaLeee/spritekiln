@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import base64
 import io
+import json
 import time
+from collections.abc import AsyncIterator
 from datetime import datetime
 from pathlib import Path
 
@@ -17,6 +19,54 @@ from .base import ProviderError
 
 def client(timeout: float = 180.0) -> httpx.AsyncClient:
     return httpx.AsyncClient(timeout=httpx.Timeout(timeout, connect=15.0), trust_env=True, follow_redirects=True)
+
+
+def parse_sse_line(line: str) -> list[tuple[str, str]]:
+    """Turn one line of an OpenAI-compatible stream into (kind, delta) pairs.
+
+    ``kind`` is ``reasoning`` for reasoning/thinking deltas (DeepSeek's ``reasoning_content``,
+    Ollama's ``reasoning``) and ``content`` for the answer text. Returns ``[]`` for pings,
+    ``[DONE]`` and anything unparsable, so callers can ignore noise safely.
+    Handles the non-streamed case too: a single plain JSON body is read as one chunk.
+    """
+    line = line.strip()
+    if not line:
+        return []
+    if not line.startswith("data:"):
+        # A proxy that ignores `stream: true` may answer with one plain JSON body.
+        try:
+            data = json.loads(line)
+        except json.JSONDecodeError:
+            return []
+        message = ((data.get("choices") or [{}])[0]).get("message") or {}
+        return _reasoning_and_content(message.get("reasoning_content") or message.get("reasoning"), message.get("content"))
+    payload = line[5:].strip()
+    if payload == "[DONE]":
+        return []
+    try:
+        data = json.loads(payload)
+    except json.JSONDecodeError:
+        return []
+    delta = ((data.get("choices") or [{}])[0]).get("delta") or {}
+    return _reasoning_and_content(delta.get("reasoning_content") or delta.get("reasoning"), delta.get("content"))
+
+
+def _reasoning_and_content(reasoning: object, content: object) -> list[tuple[str, str]]:
+    out: list[tuple[str, str]] = []
+    if reasoning:
+        out.append(("reasoning", str(reasoning)))
+    if content:
+        out.append(("content", str(content)))
+    return out
+
+
+async def openai_sse_deltas(resp: httpx.Response) -> AsyncIterator[tuple[str, str]]:
+    """Parse an OpenAI-compatible ``stream: true`` response into (kind, delta) pairs."""
+    async for line in resp.aiter_lines():
+        if line.strip() == "data: [DONE]":
+            break
+        for item in parse_sse_line(line):
+            yield item
 
 
 def png_bytes(img: Image.Image) -> bytes:

@@ -1,6 +1,7 @@
 """Provider interfaces. Every model backend (local or cloud) implements one or more of these."""
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
 
@@ -60,6 +61,17 @@ class LLMProvider(Provider):
     async def chat(self, messages: list[dict[str, str]], *, temperature: float = 0.4, json_mode: bool = False,
                    max_tokens: int = 2048) -> str:
         raise NotSupported(f"{self.name} cannot chat")
+
+    async def chat_stream(self, messages: list[dict[str, str]], *, temperature: float = 0.4,
+                          json_mode: bool = False, max_tokens: int = 2048) -> AsyncIterator[tuple[str, str]]:
+        """Yield ``(kind, delta)`` with kind ``reasoning`` or ``content``.
+
+        Providers without real streaming fall back to one full-content chunk, so callers
+        can use the same code path and still render progressive feedback where available.
+        """
+        text = await self.chat(messages, temperature=temperature, json_mode=json_mode, max_tokens=max_tokens)
+        if text:
+            yield "content", text
 
 
 class ThreeDProvider(Provider):

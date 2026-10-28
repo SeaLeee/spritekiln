@@ -22,7 +22,7 @@ from typing import Any
 
 from ..config import provider_cfg
 from .base import LLMProvider, ProviderError
-from .util import client
+from .util import client, openai_sse_deltas
 
 DEFAULT_PORT = 15721
 CACHE_TTL = 10.0
@@ -180,3 +180,28 @@ class CcSwitchLLM(LLMProvider):
         message = (r.json().get("choices") or [{}])[0].get("message") or {}
         content = message.get("content") or message.get("reasoning_content") or ""
         return content.strip()
+
+    async def chat_stream(self, messages, *, temperature: float = 0.4, json_mode: bool = False,
+                          max_tokens: int = 2048):
+        """Stream reasoning + content deltas so the UI can show progress while it thinks."""
+        info = discover()
+        if not info["ok"]:
+            raise ProviderError(f"cc-switch 不可用：{info['detail']}")
+        cfg = provider_cfg("ccswitch")
+        headers = {"Authorization": f"Bearer {cfg.get('api_key') or 'PROXY_MANAGED'}"}
+        url = f"{info['base_url']}/chat/completions"
+        async with client(float(cfg.get("timeout") or 600)) as c:
+            for attempt in range(2 if json_mode else 1):
+                body: dict[str, Any] = {"model": info["model"], "messages": messages, "temperature": temperature,
+                                        "max_tokens": max_tokens, "stream": True}
+                if json_mode and attempt == 0:
+                    body["response_format"] = {"type": "json_object"}
+                async with c.stream("POST", url, json=body, headers=headers) as r:
+                    if r.status_code >= 400:
+                        detail = (await r.aread()).decode("utf-8", "replace")[:300]
+                        if attempt == 0 and json_mode:
+                            continue  # upstream rejected response_format; retry as plain chat
+                        raise ProviderError(f"cc-switch 调用失败 {r.status_code}: {detail}")
+                    async for kind, delta in openai_sse_deltas(r):
+                        yield kind, delta
+                    return

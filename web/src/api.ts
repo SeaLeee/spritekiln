@@ -157,8 +157,53 @@ export const api = {
   stats: () => req<any>('GET', '/api/stats'),
 }
 
-export async function downloadZip(pid: string, asset_ids: string[] | null) {
-  const r = await fetch(`/api/projects/${pid}/export`, {
+export type ChatStreamEvent =
+  | { type: 'start'; thread_id: string }
+  | { type: 'status'; text: string }
+  | { type: 'meta'; llm: string; label: string }
+  | { type: 'reasoning'; text: string }
+  | { type: 'content'; text: string }
+  | { type: 'notice'; text: string }
+  | { type: 'plan'; reply: string; plan: any[]; llm: string }
+  | { type: 'done'; thread_id: string; message: any; plan: any[]; job_ids: string[]; llm: string; error: string | null }
+  | { type: 'error'; text: string }
+
+/** POST /api/agent/chat/stream and dispatch each SSE event as it arrives. */
+export async function chatStream(
+  body: { project_id: string | null; thread_id: string | null; message: string; attachments: string[] },
+  onEvent: (ev: ChatStreamEvent) => void,
+) {
+  const r = await fetch('/api/agent/chat/stream', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!r.ok || !r.body) throw new Error(`${r.status} ${await r.text().catch(() => '')}`.trim())
+  const reader = r.body.getReader()
+  const decoder = new TextDecoder()
+  let buf = ''
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += decoder.decode(value, { stream: true })
+    let idx = buf.indexOf('\n\n')
+    while (idx >= 0) {
+      const chunk = buf.slice(0, idx)
+      buf = buf.slice(idx + 2)
+      const line = chunk.split('\n').find((l) => l.startsWith('data:'))
+      if (line) {
+        try {
+          onEvent(JSON.parse(line.slice(5).trim()) as ChatStreamEvent)
+        } catch {
+          /* ignore malformed frame */
+        }
+      }
+      idx = buf.indexOf('\n\n')
+    }
+  }
+}
+
+export async function downloadZip(pid: string, asset_ids: string[] | null) {  const r = await fetch(`/api/projects/${pid}/export`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target: 'zip', asset_ids }),
   })
   if (!r.ok) throw new Error(await r.text())
