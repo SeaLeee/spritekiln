@@ -58,3 +58,15 @@ backend/workflows/<name>.map.json   # 字段映射 + 需要的模型文件
 
 - 不提交他人的私密素材、未授权模型权重或真实用户的 API Key。
 - 讨论技术分歧时对事不对人；review 里说清楚可复现的步骤和预期。
+
+## CLA（必须）
+
+本项目同时以 AGPL-3.0 和商业许可分发，所以外部 Pull Request 需要先签署 [贡献者许可协议](CLA.md)：
+
+> 在 PR 里回复：`I have read the CLA Document and I hereby sign the CLA.`
+
+没有签署的 PR 会被标记为 `cla-required`，签署后再 review。
+
+## 什么不在这个仓库
+
+托管服务（账号、计费、多租户、GPU 调度、运营后台）是独立的私有项目，不要在这里提交相关代码。边界说明见 [docs/10-开源与商业边界.md](docs/10-开源与商业边界.md)。

@@ -8,7 +8,7 @@
 - 产物即工程文件：Sprite Sheet、GIF/WebP、Godot SpriteFrames/.tscn、Aseprite JSON、Phaser atlas、Tiled `.tsj`
 - 质量门控：动画逐帧检查空帧/面积波动/尺寸漂移/重复帧，不通过自动换 seed 重拍
 - 批量：JSON manifest 一次产出整套素材，写 `batch_report.json`
-- 单用户、本机运行；MIT 许可
+- 单用户、本机运行；本地版 AGPL-3.0 开源，托管服务独立私有（[边界说明](docs/10-开源与商业边界.md)）
 
 > 当前版本是 1.0.0。项目较新，导出格式有测试覆盖，但尚未在真实引擎里做运行级验证；公网商用前请先读 [部署与安全边界](docs/08-开源自托管与商用部署.md)。
 
@@ -187,6 +187,7 @@ CI 在 GitHub Actions 上跑同样的两步。
 - **[07-模型配置](docs/07-模型配置.md)** — ComfyUI / Ollama / 云端 / Pixal3D / BiRefNet
 - **[08-开源自托管与商用部署](docs/08-开源自托管与商用部署.md)** — Docker、反代、安全清单
 - **[09-同类项目对比](docs/09-同类项目对比.md)** — 与 pixel-art-factory、agent-sprite-forge 等的区别
+- **[10-开源与商业边界](docs/10-开源与商业边界.md)** — 哪些开源、哪些是托管服务、CLA 与商业许可
 
 ---
 
@@ -218,7 +219,13 @@ CI 在 GitHub Actions 上跑同样的两步。
 
 ## 许可
 
-[MIT](LICENSE) © 2026 sealeee
+本地版以 **[AGPL-3.0](LICENSE)** 开源：自己用、商用产物、自建内部服务都没问题；把修改后的代码作为网络服务提供给别人时，需要向使用者提供对应源码。
+
+如果你的公司需要**闭源嵌入**或不想承担 AGPL 义务，可申请 [商业许可](LICENSE-COMMERCIAL.md)。MIT 时期（v1.0.0 之前的提交）仍按 [MIT](LICENSE-MIT) 授权。
+
+托管服务（账号、计费、多租户、GPU 调度）不在本仓库，见 [开源与商业边界](docs/10-开源与商业边界.md)。
+
+外部贡献需要签署 [CLA](CLA.md)。
 
 ---
 
